@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>滑と稽の境界</title>
+  <link rel="stylesheet" type="text/css" href="./style.css">
+  <script src="./pixi.min.js"></script>
+</head>
+<body>
+</body>
+
+
+<script>
+
+  let windowWidth = window.innerWidth;
+  let windowHeight = window.innerHeight;
+  let appWidth = 0;
+  let appHeight = 0;
+  let appMarginTop = 0;
+  let appMarginLeft = 0;
+
+
+  // 初始化屏幕
+  if(windowWidth > windowHeight / 16 * 9){
+    appWidth = windowHeight / 16 * 9 - 10;
+    appHeight = windowHeight - 10;
+  }else{
+    appWidth = innerWidth - 10;
+    appHeight = innerWidth / 9 * 16 - 10;
+  }
+  let app = new PIXI.Application({
+    width: appWidth,
+    height: appHeight,
+    antialias: true
+    });
+  app.renderer.backgroundColor = 0xffffff;
+  app.renderer.autoDensity = true;
+  document.body.appendChild(app.view);
+  
+
+  
+  
+</script>
+</html>
