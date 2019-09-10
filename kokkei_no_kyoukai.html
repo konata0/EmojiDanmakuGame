@@ -31,6 +31,12 @@
   let spriteTraitor = null;
   let spriteDanmakuList = [];
 
+  // 游戏参数相关
+  let sourceSize = 500;
+  let sourceRotateA = 0.005;
+  let sourceRotateVMax = 1;
+
+
 
   // 初始化屏幕
   document.body.setAttribute("style", `
@@ -75,12 +81,33 @@
   // 源
   function createSpriteSource(){
     let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huaji_512.png"].texture);
+
     sprite.anchor.x = 0.5;
     sprite.anchor.y = 0.5;
     sprite.x = 0.5 * standardWidth * scaleRatio;
     sprite.y = 0.25 * standardHeight * scaleRatio;
-    sprite.height = 500 * scaleRatio;
-    sprite.width = 500 * scaleRatio;
+    sprite.height = sourceSize * scaleRatio;
+    sprite.width = sourceSize * scaleRatio;
+
+    sprite.rotateA = sourceRotateA;
+    sprite.rotateV = 0;
+    sprite.rotateX = 0;
+
+    sprite.play = function(){
+      sprite.rotation = sprite.rotateX;
+      sprite.rotateV += sprite.rotateA;
+      sprite.rotateX += sprite.rotateV;
+      if(Math.abs(sprite.rotateV) > sourceRotateVMax){
+        sprite.rotateA = -sprite.rotateA;
+      }
+      if(sprite.rotateX > 2 * Math.PI){
+        sprite.rotateX -= 2 * Math.PI;
+      }
+      if(sprite.rotateX < -2 * Math.PI){
+        sprite.rotateX += 2 * Math.PI;
+      }
+    }
+
     return sprite;
   }
   // 自机
@@ -102,7 +129,9 @@
     return sprite;
   }
 
-  // 开始游戏
+  // -------------------------------------------
+  // ------------------开始游戏------------------
+  // -------------------------------------------
   function gameStart(){
     gameState = spritesInit;
     app.ticker.add(delta => gameLoop(delta));
@@ -120,13 +149,13 @@
     spriteTraitor = createSpriteTraitor();
     app.stage.addChild(spriteSource);
     app.stage.addChild(spriteTraitor);
-    console.log(123);
 
     gameState = play;
   
   }
   // 游戏进行
   function play(delta) {
+    spriteSource.play();
 
   }
   // 游戏结束
