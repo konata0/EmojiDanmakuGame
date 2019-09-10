@@ -3,7 +3,6 @@
 <head>
   <meta charset="utf-8">
   <title>滑と稽の境界</title>
-  <link rel="stylesheet" type="text/css" href="./style.css">
   <script src="./pixi.min.js"></script>
 </head>
 <body>
@@ -12,22 +11,45 @@
 
 <script>
 
+  // 显示相关
+  let canvasElement = null;
+  let aspectRatio = 16 / 9;
+  let marginMin = 5;
   let windowWidth = window.innerWidth;
   let windowHeight = window.innerHeight;
   let appWidth = 0;
   let appHeight = 0;
   let appMarginTop = 0;
   let appMarginLeft = 0;
+  let standardWidth = 1080;
+  let standardHeight = standardWidth * aspectRatio;
+  let scaleRatio = 0;
+
+  // 游戏数据相关
+  let gameState = null;
+  let spriteSource = null;
+  let spriteTraitor = null;
+  let spriteDanmakuList = [];
 
 
   // 初始化屏幕
-  if(windowWidth > windowHeight / 16 * 9){
-    appWidth = windowHeight / 16 * 9 - 10;
-    appHeight = windowHeight - 10;
+  document.body.setAttribute("style", `
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(255,220,130);
+  `);
+  if(windowWidth > windowHeight / aspectRatio){
+    appWidth = windowHeight / aspectRatio - marginMin * 2;
+    appHeight = windowHeight -  marginMin * 2;
   }else{
-    appWidth = innerWidth - 10;
-    appHeight = innerWidth / 9 * 16 - 10;
+    appWidth = innerWidth -  marginMin * 2;
+    appHeight = innerWidth * aspectRatio -  marginMin * 2;
   }
+  scaleRatio = appWidth / standardWidth;
+  appMarginTop = Math.round((windowHeight - appHeight) / 2); 
+  appMarginLeft = Math.round((windowWidth - appWidth) / 2); 
   let app = new PIXI.Application({
     width: appWidth,
     height: appHeight,
@@ -36,9 +58,85 @@
   app.renderer.backgroundColor = 0xffffff;
   app.renderer.autoDensity = true;
   document.body.appendChild(app.view);
-  
+  canvasElement = document.getElementsByTagName("canvas")[0];
+  canvasElement.setAttribute("style", "margin: " + appMarginTop.toString() + "px 0 0 " + appMarginLeft.toString() + "px;");
 
+
+  // 加载资源
+  PIXI.loader
+  .add([
+    "./assert/emoji/huaji_64.png",
+    "./assert/emoji/huaji_512.png",
+    "./assert/emoji/huajiTraitor_80.png"
+  ])
+  .load(gameStart);
+
+  // 生成sprite函数
+  // 源
+  function createSpriteSource(){
+    let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huaji_512.png"].texture);
+    sprite.anchor.x = 0.5;
+    sprite.anchor.y = 0.5;
+    sprite.x = 0.5 * standardWidth * scaleRatio;
+    sprite.y = 0.25 * standardHeight * scaleRatio;
+    sprite.height = 500 * scaleRatio;
+    sprite.width = 500 * scaleRatio;
+    return sprite;
+  }
+  // 自机
+  function createSpriteTraitor(){
+    let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huajiTraitor_80.png"].texture);
+    sprite.anchor.x = 0.5;
+    sprite.anchor.y = 0.5;
+    sprite.x = 0.5 * standardWidth * scaleRatio;
+    sprite.y = 0.9 * standardHeight * scaleRatio;
+    sprite.height = 60 * scaleRatio;
+    sprite.width = 60 * scaleRatio;
+    return sprite;
+  }
+  // 弹幕
+  function createSpriteDanmaku(){
+    let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huaji_64.png"].texture);
+    sprite.anchor.x = 0.5;
+    sprite.anchor.y = 0.5;
+    return sprite;
+  }
+
+  // 开始游戏
+  function gameStart(){
+    gameState = spritesInit;
+    app.ticker.add(delta => gameLoop(delta));
+  }
+  function gameLoop(delta){
+    gameState(delta);
+  }
+
+
+  // 游戏状态函数
+  // 初始化sprite
+  function spritesInit(delta) {
+
+    spriteSource = createSpriteSource();
+    spriteTraitor = createSpriteTraitor();
+    app.stage.addChild(spriteSource);
+    app.stage.addChild(spriteTraitor);
+    console.log(123);
+
+    gameState = play;
   
+  }
+  // 游戏进行
+  function play(delta) {
+
+  }
+  // 游戏结束
+  function end(delta) {
+
+  }
+
+
+
+
   
 </script>
 </html>

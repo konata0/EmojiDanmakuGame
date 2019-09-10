@@ -5,10 +5,3 @@ html, body{
     height: 100%;
     background-color: rgb(255,220,130);
 }
-/*
-body> canvas{
-    position: fixed;
-    left: 50%;
-    top: 50%;
-}
-*/
