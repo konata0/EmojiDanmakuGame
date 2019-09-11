@@ -30,11 +30,20 @@
   let spriteSource = null;
   let spriteTraitor = null;
   let spriteDanmakuList = [];
+  let danmakuProgress = -1;
 
   // 游戏参数相关
+  // 源
   let sourceSize = 500;
   let sourceRotateA = 0.005;
   let sourceRotateVMax = 1;
+  // 弹幕
+  let danmakuInterval = 10;
+  let danmakuSize = 40;
+  let danmakuCount = 10;
+  let danmakuRadius = 0.5;
+  let danmakuV = 3;
+  // 自机
 
 
 
@@ -122,10 +131,27 @@
     return sprite;
   }
   // 弹幕
-  function createSpriteDanmaku(){
+  function createSpriteDanmaku(index){
     let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huaji_64.png"].texture);
     sprite.anchor.x = 0.5;
     sprite.anchor.y = 0.5;
+    sprite.height = danmakuSize * scaleRatio;
+    sprite.width = danmakuSize * scaleRatio;
+
+    sinValue = Math.sin(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
+    cosValue = Math.cos(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
+
+    sprite.x = spriteSource.x + spriteSource.height * danmakuRadius * cosValue;
+    sprite.y = spriteSource.y + spriteSource.height * danmakuRadius * sinValue;
+
+    sprite.Vx = danmakuV * scaleRatio * cosValue;
+    sprite.Vy = danmakuV * scaleRatio * sinValue;
+
+    sprite.play = function(){
+      sprite.x += sprite.Vx;
+      sprite.y += sprite.Vy;
+    }
+
     return sprite;
   }
 
@@ -145,6 +171,7 @@
   // 初始化sprite
   function spritesInit(delta) {
 
+    danmakuProgress = -1;
     spriteSource = createSpriteSource();
     spriteTraitor = createSpriteTraitor();
     app.stage.addChild(spriteSource);
@@ -155,7 +182,21 @@
   }
   // 游戏进行
   function play(delta) {
+
+    danmakuProgress += 1;
+    if(danmakuProgress >= danmakuInterval){
+      danmakuProgress = -1;
+      for(let i = 1; i <= danmakuCount; i++){
+        let newSpriteDanmaku = createSpriteDanmaku(i);
+        spriteDanmakuList.push(newSpriteDanmaku);
+        app.stage.addChild(newSpriteDanmaku);
+      }
+    }
+
     spriteSource.play();
+    spriteDanmakuList.forEach(spriteDanmaku => {
+      spriteDanmaku.play();
+    });
 
   }
   // 游戏结束
