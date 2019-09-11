@@ -30,6 +30,7 @@
   let spriteSource = null;
   let spriteTraitor = null;
   let spriteDanmakuList = [];
+  let spriteDanmakuListIndex = 0;
   let danmakuProgress = -1;
 
   // 游戏参数相关
@@ -43,6 +44,7 @@
   let danmakuCount = 10;
   let danmakuRadius = 0.5;
   let danmakuV = 3;
+  let danmakuAmountLimit = (standardHeight + standardWidth) / danmakuV / danmakuInterval * danmakuCount * 1.2;
   // 自机
 
 
@@ -131,29 +133,38 @@
     return sprite;
   }
   // 弹幕
-  function createSpriteDanmaku(index){
+  function createSpriteDanmaku(){
     let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huaji_64.png"].texture);
     sprite.anchor.x = 0.5;
     sprite.anchor.y = 0.5;
     sprite.height = danmakuSize * scaleRatio;
     sprite.width = danmakuSize * scaleRatio;
-
-    sinValue = Math.sin(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
-    cosValue = Math.cos(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
-
-    sprite.x = spriteSource.x + spriteSource.height * danmakuRadius * cosValue;
-    sprite.y = spriteSource.y + spriteSource.height * danmakuRadius * sinValue;
-
-    sprite.Vx = danmakuV * scaleRatio * cosValue;
-    sprite.Vy = danmakuV * scaleRatio * sinValue;
+    sprite.x = -2 * sprite.width;
+    sprite.y = -2 * sprite.height;
+    sprite.Vx = 0;
+    sprite.Vy = 0;
 
     sprite.play = function(){
       sprite.x += sprite.Vx;
       sprite.y += sprite.Vy;
     }
 
+    sprite.reset = function(index){
+      sinValue = Math.sin(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
+      cosValue = Math.cos(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
+
+      sprite.x = spriteSource.x + spriteSource.height * danmakuRadius * cosValue;
+      sprite.y = spriteSource.y + spriteSource.height * danmakuRadius * sinValue;
+
+      sprite.Vx = danmakuV * scaleRatio * cosValue;
+      sprite.Vy = danmakuV * scaleRatio * sinValue;
+    }
+
     return sprite;
   }
+
+  // 游戏需要的函数
+
 
   // -------------------------------------------
   // ------------------开始游戏------------------
@@ -172,10 +183,17 @@
   function spritesInit(delta) {
 
     danmakuProgress = -1;
+    spriteDanmakuListIndex = 0;
     spriteSource = createSpriteSource();
     spriteTraitor = createSpriteTraitor();
     app.stage.addChild(spriteSource);
     app.stage.addChild(spriteTraitor);
+    for(let i = 0; i <= danmakuAmountLimit - 1; i++){
+      spriteDanmakuList[i] = createSpriteDanmaku();
+      app.stage.addChild(spriteDanmakuList[i]);
+    }
+
+
 
     gameState = play;
   
@@ -183,20 +201,26 @@
   // 游戏进行
   function play(delta) {
 
+    // 重置弹幕
     danmakuProgress += 1;
     if(danmakuProgress >= danmakuInterval){
       danmakuProgress = -1;
       for(let i = 1; i <= danmakuCount; i++){
-        let newSpriteDanmaku = createSpriteDanmaku(i);
-        spriteDanmakuList.push(newSpriteDanmaku);
-        app.stage.addChild(newSpriteDanmaku);
+        spriteDanmakuList[spriteDanmakuListIndex].reset(i);
+        spriteDanmakuListIndex += 1;
+        if(spriteDanmakuListIndex >= danmakuAmountLimit){
+          spriteDanmakuListIndex = 0;
+        }       
       }
     }
 
+    // 游戏动画
     spriteSource.play();
     spriteDanmakuList.forEach(spriteDanmaku => {
       spriteDanmaku.play();
     });
+
+    
 
   }
   // 游戏结束
