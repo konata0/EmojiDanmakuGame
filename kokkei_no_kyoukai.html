@@ -51,8 +51,11 @@
   let danmakuV = 10;
   let danmakuAmountLimit = Math.round((standardHeight + standardWidth) / danmakuV / (danmakuInterval + 1) * danmakuCount * 1.2);
   // 自机
-  let traitorV = 8;
+  let traitorSize = 60;
+  let traitorV = 9;
   let traitorV2 = 5;
+  let traitorRatio = 0.6;
+  let missDistanceRatio = 0.35;
 
 
 
@@ -135,8 +138,8 @@
     sprite.anchor.y = 0.5;
     sprite.x = 0.5 * standardWidth * scaleRatio;
     sprite.y = 0.9 * standardHeight * scaleRatio;
-    sprite.height = 60 * scaleRatio;
-    sprite.width = 60 * scaleRatio;
+    sprite.height = traitorSize * scaleRatio;
+    sprite.width = traitorSize * scaleRatio;
 
     sprite.V = 0;
     sprite.Vx = 0;
@@ -166,10 +169,32 @@
         sprite.Vx /= 1.414;
         sprite.Vy /= 1.414;
       }
+      if(sprite.x <= sprite.width * traitorRatio && sprite.Vx < 0){
+        sprite.Vx = 0;
+      }
+      if(sprite.x >= appWidth - sprite.width * traitorRatio && sprite.Vx > 0){
+        sprite.Vx = 0;
+      }
+      if(sprite.y <= sprite.height * traitorRatio && sprite.Vy < 0){
+        sprite.Vy = 0;
+      }
+      if(sprite.y >= appHeight - sprite.height * traitorRatio && sprite.Vy > 0){
+        sprite.Vy = 0;
+      }
       sprite.x += sprite.Vx;
       sprite.y += sprite.Vy;
     };
 
+    sprite.miss = function(){
+      let flag = false;
+      spriteDanmakuList.forEach(danmaku => {
+        if(Math.sqrt(Math.pow(danmaku.x - sprite.x, 2) + Math.pow(danmaku.y - sprite.y, 2)) <
+          (danmakuSize + traitorSize) * scaleRatio * missDistanceRatio){
+            flag = true;
+        }
+      });
+      return flag;
+    }
 
     return sprite;
   }
@@ -266,15 +291,12 @@
     rightKey = createKey(39);
     shiftKey = createKey(16);
 
-
-
-
     gameState = play;
   
   }
   // 游戏进行
   function play(delta) {
-    /*
+    
     // 重置弹幕
     danmakuProgress += 1;
     if(danmakuProgress >= danmakuInterval){
@@ -287,22 +309,18 @@
         }       
       }
     }
-
     // 游戏动画
     spriteSource.play();
     spriteDanmakuList.forEach(spriteDanmaku => {
       spriteDanmaku.play();
     });
-    */
     spriteTraitor.play();
-
-
-
-
-    
-
-    
-
+    // miss判定
+    if(spriteTraitor.miss()){
+      gameState = end;
+    }else{
+      gameState = play;
+    }
   }
   // 游戏结束
   function end(delta) {
