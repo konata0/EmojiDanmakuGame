@@ -32,20 +32,27 @@
   let spriteDanmakuList = [];
   let spriteDanmakuListIndex = 0;
   let danmakuProgress = -1;
+  let upKey = null;
+  let downKey = null;
+  let leftKey = null;
+  let rightKey = null;
+  let shiftKey = null;
 
   // 游戏参数相关
   // 源
   let sourceSize = 500;
-  let sourceRotateA = 0.005;
-  let sourceRotateVMax = 1;
+  let sourceRotateA = 0.001;
+  let sourceRotateVMax = 0.5;
   // 弹幕
-  let danmakuInterval = 10;
+  let danmakuInterval = 1;
   let danmakuSize = 40;
   let danmakuCount = 10;
   let danmakuRadius = 0.5;
-  let danmakuV = 3;
-  let danmakuAmountLimit = (standardHeight + standardWidth) / danmakuV / danmakuInterval * danmakuCount * 1.2;
+  let danmakuV = 10;
+  let danmakuAmountLimit = Math.round((standardHeight + standardWidth) / danmakuV / (danmakuInterval + 1) * danmakuCount * 1.2);
   // 自机
+  let traitorV = 8;
+  let traitorV2 = 5;
 
 
 
@@ -130,6 +137,40 @@
     sprite.y = 0.9 * standardHeight * scaleRatio;
     sprite.height = 60 * scaleRatio;
     sprite.width = 60 * scaleRatio;
+
+    sprite.V = 0;
+    sprite.Vx = 0;
+    sprite.Vy = 0;
+
+    sprite.play = function(){
+      sprite.Vx = 0;
+      sprite.Vy = 0;
+      if(shiftKey.press){
+        sprite.V = traitorV2 * scaleRatio;
+      }else{
+        sprite.V = traitorV * scaleRatio;
+      }
+      if(upKey.press){
+        sprite.Vy -= sprite.V;
+      }
+      if(downKey.press){
+        sprite.Vy += sprite.V;
+      }
+      if(leftKey.press){
+        sprite.Vx -= sprite.V;
+      }
+      if(rightKey.press){
+        sprite.Vx += sprite.V;
+      }
+      if(sprite.Vx !== 0 && sprite.Vy !== 0){
+        sprite.Vx /= 1.414;
+        sprite.Vy /= 1.414;
+      }
+      sprite.x += sprite.Vx;
+      sprite.y += sprite.Vy;
+    };
+
+
     return sprite;
   }
   // 弹幕
@@ -164,13 +205,38 @@
   }
 
   // 游戏需要的函数
+  // 键盘响应对象
+  function createKey(keyCode) {
+    let key = {};
+    key.code = keyCode;
+    key.press = false;
+    key.downHandler = function(event){
+      if (event.keyCode === key.code) {
+        key.press = true;
+      }
+      event.preventDefault();
+    };
+    key.upHandler = function(event){
+      if (event.keyCode === key.code) {
+        key.press = false;
+      }
+      event.preventDefault();
+    };
+    window.addEventListener(
+      "keydown", key.downHandler.bind(key), false
+    );
+    window.addEventListener(
+      "keyup", key.upHandler.bind(key), false
+    );
+    return key;
+  }
 
 
   // -------------------------------------------
   // ------------------开始游戏------------------
   // -------------------------------------------
   function gameStart(){
-    gameState = spritesInit;
+    gameState = gameInit;
     app.ticker.add(delta => gameLoop(delta));
   }
   function gameLoop(delta){
@@ -180,10 +246,11 @@
 
   // 游戏状态函数
   // 初始化sprite
-  function spritesInit(delta) {
+  function gameInit(delta) {
 
     danmakuProgress = -1;
     spriteDanmakuListIndex = 0;
+    // 创建sprite
     spriteSource = createSpriteSource();
     spriteTraitor = createSpriteTraitor();
     app.stage.addChild(spriteSource);
@@ -192,6 +259,13 @@
       spriteDanmakuList[i] = createSpriteDanmaku();
       app.stage.addChild(spriteDanmakuList[i]);
     }
+    // 创建键值
+    upKey = createKey(38);
+    downKey = createKey(40);
+    leftKey = createKey(37);
+    rightKey = createKey(39);
+    shiftKey = createKey(16);
+
 
 
 
@@ -200,7 +274,7 @@
   }
   // 游戏进行
   function play(delta) {
-
+    /*
     // 重置弹幕
     danmakuProgress += 1;
     if(danmakuProgress >= danmakuInterval){
@@ -219,6 +293,13 @@
     spriteDanmakuList.forEach(spriteDanmaku => {
       spriteDanmaku.play();
     });
+    */
+    spriteTraitor.play();
+
+
+
+
+    
 
     
 
