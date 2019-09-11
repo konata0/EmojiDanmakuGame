@@ -37,6 +37,9 @@
   let leftKey = null;
   let rightKey = null;
   let shiftKey = null;
+  let score = 0;
+  let scoreHistory = 0;
+  let scoreMessage = null;
 
   // 游戏参数相关
   // 源
@@ -56,7 +59,6 @@
   let traitorV2 = 5;
   let traitorRatio = 0.6;
   let missDistanceRatio = 0.35;
-
 
 
   // 初始化屏幕
@@ -275,6 +277,7 @@
 
     danmakuProgress = -1;
     spriteDanmakuListIndex = 0;
+    score = 0;
     // 创建sprite
     spriteSource = createSpriteSource();
     spriteTraitor = createSpriteTraitor();
@@ -290,6 +293,11 @@
     leftKey = createKey(37);
     rightKey = createKey(39);
     shiftKey = createKey(16);
+    // 创建文本
+    scoreMessage = new PIXI.Text(score.toString() + " / " + scoreHistory.toString());
+    scoreMessage.style = {fill: "#18a0ff", font: "20px PetMe64"};
+    scoreMessage.position.set(10 * scaleRatio, 10 * scaleRatio);
+    app.stage.addChild(scoreMessage);
 
     gameState = play;
   
@@ -315,19 +323,19 @@
       spriteDanmaku.play();
     });
     spriteTraitor.play();
+    // 计算时
+    score += 1;
+    scoreMessage.text = score.toString() + " / " + scoreHistory.toString();
     // miss判定
     if(spriteTraitor.miss()){
-      gameState = end;
-    }else{
-      gameState = play;
+      if(score > scoreHistory){
+        scoreHistory = score;
+      }
+      score = 0;
     }
+
+    gameState = play;
   }
-  // 游戏结束
-  function end(delta) {
-
-  }
-
-
 
 
   
