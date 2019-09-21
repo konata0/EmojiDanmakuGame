@@ -3,7 +3,6 @@
 <head>
   <meta charset="utf-8">
   <title>滑と稽の境界</title>
-  <link rel="stylesheet" type="text/css" href="./style.css">
   <script src="./pixi.min.js"></script>
 </head>
 <body>
@@ -12,22 +11,74 @@
 
 <script>
 
+  // 显示相关
+  let canvasElement = null;
+  let aspectRatio = 16 / 9;
+  let marginMin = 5;
   let windowWidth = window.innerWidth;
   let windowHeight = window.innerHeight;
   let appWidth = 0;
   let appHeight = 0;
   let appMarginTop = 0;
   let appMarginLeft = 0;
+  let standardWidth = 1080;
+  let standardHeight = standardWidth * aspectRatio;
+  let scaleRatio = 0;
+
+  // 游戏数据相关
+  let gameState = null;
+  let spriteSource = null;
+  let spriteTraitor = null;
+  let spriteDanmakuList = [];
+  let spriteDanmakuListIndex = 0;
+  let danmakuProgress = -1;
+  let upKey = null;
+  let downKey = null;
+  let leftKey = null;
+  let rightKey = null;
+  let shiftKey = null;
+  let score = 0;
+  let scoreHistory = 0;
+  let scoreMessage = null;
+
+  // 游戏参数相关
+  // 源
+  let sourceSize = 500;
+  let sourceRotateA = 0.001;
+  let sourceRotateVMax = 0.5;
+  // 弹幕
+  let danmakuInterval = 1;
+  let danmakuSize = 40;
+  let danmakuCount = 10;
+  let danmakuRadius = 0.5;
+  let danmakuV = 12;
+  let danmakuAmountLimit = Math.round((standardHeight + standardWidth) / danmakuV / (danmakuInterval + 1) * danmakuCount * 1.2);
+  // 自机
+  let traitorSize = 40;
+  let traitorV = 11;
+  let traitorV2 = 6;
+  let traitorRatio = 0.6;
+  let missDistanceRatio = 0.32;
 
 
   // 初始化屏幕
-  if(windowWidth > windowHeight / 16 * 9){
-    appWidth = windowHeight / 16 * 9 - 10;
-    appHeight = windowHeight - 10;
+  document.body.setAttribute("style", `
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(255,220,130);
+  `);
+  if(windowWidth > windowHeight / aspectRatio){
+    appWidth = windowHeight / aspectRatio - marginMin * 2;
+    appHeight = windowHeight -  marginMin * 2;
   }else{
-    appWidth = innerWidth - 10;
-    appHeight = innerWidth / 9 * 16 - 10;
+    appWidth = innerWidth -  marginMin * 2;
+    appHeight = innerWidth * aspectRatio -  marginMin * 2;
   }
+  scaleRatio = appWidth / standardWidth;
+  appMarginTop = Math.round((windowHeight - appHeight) / 2); 
+  appMarginLeft = Math.round((windowWidth - appWidth) / 2); 
   let app = new PIXI.Application({
     width: appWidth,
     height: appHeight,
@@ -36,9 +87,257 @@
   app.renderer.backgroundColor = 0xffffff;
   app.renderer.autoDensity = true;
   document.body.appendChild(app.view);
-  
+  canvasElement = document.getElementsByTagName("canvas")[0];
+  canvasElement.setAttribute("style", "margin: " + appMarginTop.toString() + "px 0 0 " + appMarginLeft.toString() + "px;");
 
+
+  // 加载资源
+  PIXI.loader
+  .add([
+    "./assert/emoji/huaji_64.png",
+    "./assert/emoji/huaji_512.png",
+    "./assert/emoji/huajiTraitor_80.png"
+  ])
+  .load(gameStart);
+
+  // 生成sprite函数
+  // 源
+  function createSpriteSource(){
+    let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huaji_512.png"].texture);
+
+    sprite.anchor.x = 0.5;
+    sprite.anchor.y = 0.5;
+    sprite.x = 0.5 * standardWidth * scaleRatio;
+    sprite.y = 0.25 * standardHeight * scaleRatio;
+    sprite.height = sourceSize * scaleRatio;
+    sprite.width = sourceSize * scaleRatio;
+
+    sprite.rotateA = sourceRotateA;
+    sprite.rotateV = 0;
+    sprite.rotateX = 0;
+
+    sprite.play = function(){
+      sprite.rotation = sprite.rotateX;
+      sprite.rotateV += sprite.rotateA;
+      sprite.rotateX += sprite.rotateV;
+      if(Math.abs(sprite.rotateV) > sourceRotateVMax){
+        sprite.rotateA = -sprite.rotateA;
+      }
+      if(sprite.rotateX > 2 * Math.PI){
+        sprite.rotateX -= 2 * Math.PI;
+      }
+      if(sprite.rotateX < -2 * Math.PI){
+        sprite.rotateX += 2 * Math.PI;
+      }
+    }
+
+    return sprite;
+  }
+  // 自机
+  function createSpriteTraitor(){
+    let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huajiTraitor_80.png"].texture);
+    sprite.anchor.x = 0.5;
+    sprite.anchor.y = 0.5;
+    sprite.x = 0.5 * standardWidth * scaleRatio;
+    sprite.y = 0.9 * standardHeight * scaleRatio;
+    sprite.height = traitorSize * scaleRatio;
+    sprite.width = traitorSize * scaleRatio;
+
+    sprite.V = 0;
+    sprite.Vx = 0;
+    sprite.Vy = 0;
+
+    sprite.play = function(){
+      sprite.Vx = 0;
+      sprite.Vy = 0;
+      if(shiftKey.press){
+        sprite.V = traitorV2 * scaleRatio;
+      }else{
+        sprite.V = traitorV * scaleRatio;
+      }
+      if(upKey.press){
+        sprite.Vy -= sprite.V;
+      }
+      if(downKey.press){
+        sprite.Vy += sprite.V;
+      }
+      if(leftKey.press){
+        sprite.Vx -= sprite.V;
+      }
+      if(rightKey.press){
+        sprite.Vx += sprite.V;
+      }
+      if(sprite.Vx !== 0 && sprite.Vy !== 0){
+        sprite.Vx /= 1.414;
+        sprite.Vy /= 1.414;
+      }
+      if(sprite.x <= sprite.width * traitorRatio && sprite.Vx < 0){
+        sprite.Vx = 0;
+      }
+      if(sprite.x >= appWidth - sprite.width * traitorRatio && sprite.Vx > 0){
+        sprite.Vx = 0;
+      }
+      if(sprite.y <= sprite.height * traitorRatio && sprite.Vy < 0){
+        sprite.Vy = 0;
+      }
+      if(sprite.y >= appHeight - sprite.height * traitorRatio && sprite.Vy > 0){
+        sprite.Vy = 0;
+      }
+      sprite.x += sprite.Vx;
+      sprite.y += sprite.Vy;
+    };
+
+    sprite.miss = function(){
+      let flag = false;
+      spriteDanmakuList.forEach(danmaku => {
+        if(Math.sqrt(Math.pow(danmaku.x - sprite.x, 2) + Math.pow(danmaku.y - sprite.y, 2)) <
+          (danmakuSize + traitorSize) * scaleRatio * missDistanceRatio){
+            flag = true;
+        }
+      });
+      return flag;
+    }
+
+    return sprite;
+  }
+  // 弹幕
+  function createSpriteDanmaku(){
+    let sprite = new PIXI.Sprite(PIXI.loader.resources["./assert/emoji/huaji_64.png"].texture);
+    sprite.anchor.x = 0.5;
+    sprite.anchor.y = 0.5;
+    sprite.height = danmakuSize * scaleRatio;
+    sprite.width = danmakuSize * scaleRatio;
+    sprite.x = -2 * sprite.width;
+    sprite.y = -2 * sprite.height;
+    sprite.Vx = 0;
+    sprite.Vy = 0;
+
+    sprite.play = function(){
+      sprite.x += sprite.Vx;
+      sprite.y += sprite.Vy;
+    }
+
+    sprite.reset = function(index){
+      sinValue = Math.sin(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
+      cosValue = Math.cos(2 * Math.PI * index / danmakuCount + spriteSource.rotateX);
+
+      sprite.x = spriteSource.x + spriteSource.height * danmakuRadius * cosValue;
+      sprite.y = spriteSource.y + spriteSource.height * danmakuRadius * sinValue;
+
+      sprite.Vx = danmakuV * scaleRatio * cosValue;
+      sprite.Vy = danmakuV * scaleRatio * sinValue;
+    }
+
+    return sprite;
+  }
+
+  // 游戏需要的函数
+  // 键盘响应对象
+  function createKey(keyCode) {
+    let key = {};
+    key.code = keyCode;
+    key.press = false;
+    key.downHandler = function(event){
+      if (event.keyCode === key.code) {
+        key.press = true;
+      }
+      event.preventDefault();
+    };
+    key.upHandler = function(event){
+      if (event.keyCode === key.code) {
+        key.press = false;
+      }
+      event.preventDefault();
+    };
+    window.addEventListener(
+      "keydown", key.downHandler.bind(key), false
+    );
+    window.addEventListener(
+      "keyup", key.upHandler.bind(key), false
+    );
+    return key;
+  }
+
+
+  // -------------------------------------------
+  // ------------------开始游戏------------------
+  // -------------------------------------------
+  function gameStart(){
+    gameState = gameInit;
+    app.ticker.add(delta => gameLoop(delta));
+  }
+  function gameLoop(delta){
+    gameState(delta);
+  }
+
+
+  // 游戏状态函数
+  // 初始化sprite
+  function gameInit(delta) {
+
+    danmakuProgress = -1;
+    spriteDanmakuListIndex = 0;
+    score = 0;
+    // 创建sprite
+    spriteSource = createSpriteSource();
+    spriteTraitor = createSpriteTraitor();
+    app.stage.addChild(spriteSource);
+    app.stage.addChild(spriteTraitor);
+    for(let i = 0; i <= danmakuAmountLimit - 1; i++){
+      spriteDanmakuList[i] = createSpriteDanmaku();
+      app.stage.addChild(spriteDanmakuList[i]);
+    }
+    // 创建键值
+    upKey = createKey(38);
+    downKey = createKey(40);
+    leftKey = createKey(37);
+    rightKey = createKey(39);
+    shiftKey = createKey(16);
+    // 创建文本
+    scoreMessage = new PIXI.Text(score.toString() + " / " + scoreHistory.toString());
+    scoreMessage.style = {fill: "#18a0ff", font: "20px PetMe64"};
+    scoreMessage.position.set(10 * scaleRatio, 10 * scaleRatio);
+    app.stage.addChild(scoreMessage);
+
+    gameState = play;
   
+  }
+  // 游戏进行
+  function play(delta) {
+    
+    // 重置弹幕
+    danmakuProgress += 1;
+    if(danmakuProgress >= danmakuInterval){
+      danmakuProgress = -1;
+      for(let i = 1; i <= danmakuCount; i++){
+        spriteDanmakuList[spriteDanmakuListIndex].reset(i);
+        spriteDanmakuListIndex += 1;
+        if(spriteDanmakuListIndex >= danmakuAmountLimit){
+          spriteDanmakuListIndex = 0;
+        }       
+      }
+    }
+    // 游戏动画
+    spriteSource.play();
+    spriteDanmakuList.forEach(spriteDanmaku => {
+      spriteDanmaku.play();
+    });
+    spriteTraitor.play();
+    // 计算时
+    score += 1;
+    scoreMessage.text = score.toString() + " / " + scoreHistory.toString();
+    // miss判定
+    if(spriteTraitor.miss()){
+      if(score > scoreHistory){
+        scoreHistory = score;
+      }
+      score = 0;
+    }
+
+    gameState = play;
+  }
+
+
   
 </script>
 </html>
